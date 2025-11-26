@@ -1,66 +1,137 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useState } from 'react';
 
 export default function Home() {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isTestMode, setIsTestMode] = useState(false); // Default to OTP mode
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: string }
+
+  // OTP State
+  const [otpSent, setOtpSent] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState(null);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState(null);
+
+  const generateOtp = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  const handleSend = async () => {
+    setLoading(true);
+    setStatus(null);
+    setOtpSent(false);
+    setVerificationStatus(null);
+    setEnteredOtp('');
+
+    try {
+      let otp = null;
+      if (!isTestMode) {
+        otp = generateOtp();
+        setGeneratedOtp(otp);
+      }
+
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber,
+          isTestMode,
+          otp
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus({ type: 'success', message: 'Message sent successfully!' });
+        if (!isTestMode) {
+          setOtpSent(true);
+        }
+      } else {
+        setStatus({ type: 'error', message: data.error || 'Failed to send message' });
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: 'An error occurred. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = () => {
+    if (enteredOtp === generatedOtp) {
+      setVerificationStatus({ type: 'success', message: 'OTP Verified Successfully!' });
+    } else {
+      setVerificationStatus({ type: 'error', message: 'Invalid OTP. Please try again.' });
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.js file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main>
+      <div className="container">
+        <h1>WhatsApp Auth Demo</h1>
+
+        <div className="toggle-container">
+          <p className="toggle-label">Test Mode (Hello World)</p>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={isTestMode}
+              onChange={(e) => setIsTestMode(e.target.checked)}
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <span className="slider"></span>
+          </label>
         </div>
-      </main>
-    </div>
+
+        <div className="form-group">
+          <label htmlFor="phone">Phone Number (with country code)</label>
+          <input
+            id="phone"
+            type="tel"
+            placeholder="e.g. 971589935206"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+          />
+        </div>
+
+        <button onClick={handleSend} disabled={loading || !phoneNumber}>
+          {loading ? 'Sending...' : (isTestMode ? 'Send Test Message' : 'Send OTP')}
+        </button>
+
+        {status && (
+          <div className={`status-message ${status.type === 'success' ? 'status-success' : 'status-error'}`}>
+            {status.message}
+          </div>
+        )}
+
+        {!isTestMode && otpSent && (
+          <div className="otp-section">
+            <div className="form-group">
+              <label htmlFor="otp">Enter OTP</label>
+              <input
+                id="otp"
+                type="text"
+                placeholder="Enter 6-digit code"
+                maxLength={6}
+                value={enteredOtp}
+                onChange={(e) => setEnteredOtp(e.target.value)}
+              />
+            </div>
+            <button onClick={handleVerify} disabled={!enteredOtp}>
+              Verify OTP
+            </button>
+
+            {verificationStatus && (
+              <div className={`status-message ${verificationStatus.type === 'success' ? 'status-success' : 'status-error'}`}>
+                {verificationStatus.message}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
