@@ -41,3 +41,28 @@ Templates usually get approved instantly or within a few minutes.
 
 ## 5. Test
 Once approved, use the "Test Mode" toggle in the app to switch between `hello_world` (pre-approved) and your new `auth_otp` template.
+
+---
+
+# Webhook Setup (Real-time Status)
+
+To receive real-time updates (Sent, Delivered, Read) for your messages, you need to configure a Webhook.
+
+## 1. Deploy to Vercel
+Ensure your app is deployed to Vercel so you have a public URL (e.g., `https://otp-demo.vercel.app`).
+
+## 2. Configure Webhook in Meta Dashboard
+1.  Go to your App Dashboard on [developers.facebook.com](https://developers.facebook.com/).
+2.  In the left sidebar, find **WhatsApp** > **Configuration**.
+3.  Find the **Webhook** section and click **Edit**.
+4.  **Callback URL**: Enter your Vercel URL appended with `/api/webhook`.
+    - Example: `https://otp-demo.vercel.app/api/webhook`
+5.  **Verify Token**: Enter `my_secure_verify_token` (This is hardcoded in `src/app/api/webhook/route.js`).
+6.  Click **Verify and Save**.
+
+## 3. Subscribe to Events
+1.  Once verified, click **Manage** in the Webhook fields section.
+2.  Subscribe to the **`messages`** field.
+3.  Click **Done**.
+
+Now, when you send a message from the app, you will see the status update in real-time in the "Message History" section of your app!

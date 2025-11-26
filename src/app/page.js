@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -13,6 +13,57 @@ export default function Home() {
   const [generatedOtp, setGeneratedOtp] = useState(null);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [verificationStatus, setVerificationStatus] = useState(null);
+
+  // Message History State
+  const [messageHistory, setMessageHistory] = useState([]);
+
+  useEffect(() => {
+    // Load history from local storage on mount
+    const savedHistory = localStorage.getItem('messageHistory');
+    if (savedHistory) {
+      setMessageHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Save history to local storage whenever it changes
+    localStorage.setItem('messageHistory', JSON.stringify(messageHistory));
+  }, [messageHistory]);
+
+  // Poll for status updates
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const pendingMessages = messageHistory.filter(msg => msg.status !== 'read' && msg.status !== 'failed');
+
+      if (pendingMessages.length === 0) return;
+
+      const ids = pendingMessages.map(msg => msg.id);
+
+      try {
+        const response = await fetch('/api/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const statuses = data.statuses;
+
+          setMessageHistory(prev => prev.map(msg => {
+            if (statuses[msg.id] && statuses[msg.id] !== 'unknown' && statuses[msg.id] !== msg.status) {
+              return { ...msg, status: statuses[msg.id] };
+            }
+            return msg;
+          }));
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [messageHistory]);
 
   const generateOtp = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -48,6 +99,17 @@ export default function Home() {
 
       if (response.ok) {
         setStatus({ type: 'success', message: 'Message sent successfully!' });
+
+        // Add to history
+        const newMessage = {
+          id: data.data.messages[0].id,
+          phone: phoneNumber,
+          timestamp: new Date().toISOString(),
+          status: 'sent', // Initial status
+          type: isTestMode ? 'Test' : 'OTP'
+        };
+        setMessageHistory(prev => [newMessage, ...prev]);
+
         if (!isTestMode) {
           setOtpSent(true);
         }
@@ -66,6 +128,16 @@ export default function Home() {
       setVerificationStatus({ type: 'success', message: 'OTP Verified Successfully!' });
     } else {
       setVerificationStatus({ type: 'error', message: 'Invalid OTP. Please try again.' });
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'sent': return 'text-blue-400';
+      case 'delivered': return 'text-yellow-400';
+      case 'read': return 'text-green-400';
+      case 'failed': return 'text-red-400';
+      default: return 'text-gray-400';
     }
   };
 
@@ -129,6 +201,39 @@ export default function Home() {
                 {verificationStatus.message}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Message History Section */}
+        {messageHistory.length > 0 && (
+          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#e2e8f0' }}>Message History</h3>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {messageHistory.map((msg) => (
+                <div key={msg.id} style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.85rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ color: '#94a3b8' }}>{msg.type} to {msg.phone}</span>
+                    <span style={{
+                      fontWeight: 'bold',
+                      color: msg.status === 'read' ? '#4ade80' :
+                        msg.status === 'delivered' ? '#facc15' :
+                          msg.status === 'sent' ? '#60a5fa' : '#ef4444'
+                    }}>
+                      {msg.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
