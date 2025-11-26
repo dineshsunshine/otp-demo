@@ -3,14 +3,14 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { phoneNumber, isTestMode, otp } = body;
+    const { phoneNumber, isTestMode, otp, accessToken } = body;
 
     if (!phoneNumber) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
-    // Hardcoded credentials as per user request (In production, use env vars)
-    const ACCESS_TOKEN = 'EAATuIkNZASCwBQBFmEUZCKF1bw1FcZCvdwSBsyaBRZBC66fVvZAkSOPcltinuenc2oFXkunS9fL5pxy97XHgqK6UgOsZCe1g34e3iXZBOtDwBfUZBoTAZAL1sxjFfkkQeq3XiSFuiFu69YbjNqkLLhYhzCZBNYNt8WKmwVrBN45nkqOM9zNFwpEcDgKW7h71eGSxOe0bOBVvi0Y9fvvqLxJrAW4sLJDDvoYNwE70cHUiQOpcLGsXk2MblLU8HJDKZA32xFoy682lhIOPvKcRXJcmuaO';
+    // Use provided token or fallback to hardcoded (for backward compatibility if needed, though user wants to update it)
+    const ACCESS_TOKEN = accessToken || 'EAATuIkNZASCwBQBFmEUZCKF1bw1FcZCvdwSBsyaBRZBC66fVvZAkSOPcltinuenc2oFXkunS9fL5pxy97XHgqK6UgOsZCe1g34e3iXZBOtDwBfUZBoTAZAL1sxjFfkkQeq3XiSFuiFu69YbjNqkLLhYhzCZBNYNt8WKmwVrBN45nkqOM9zNFwpEcDgKW7h71eGSxOe0bOBVvi0Y9fvvqLxJrAW4sLJDDvoYNwE70cHUiQOpcLGsXk2MblLU8HJDKZA32xFoy682lhIOPvKcRXJcmuaO';
     const PHONE_NUMBER_ID = '890904030774821';
     const URL = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
 

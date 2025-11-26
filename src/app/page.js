@@ -14,6 +14,10 @@ export default function Home() {
   const [enteredOtp, setEnteredOtp] = useState('');
   const [verificationStatus, setVerificationStatus] = useState(null);
 
+  // Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [accessToken, setAccessToken] = useState('');
+
   // Message History State
   const [messageHistory, setMessageHistory] = useState([]);
 
@@ -23,12 +27,24 @@ export default function Home() {
     if (savedHistory) {
       setMessageHistory(JSON.parse(savedHistory));
     }
+    // Load access token
+    const savedToken = localStorage.getItem('metaAccessToken');
+    if (savedToken) {
+      setAccessToken(savedToken);
+    }
   }, []);
 
   useEffect(() => {
     // Save history to local storage whenever it changes
     localStorage.setItem('messageHistory', JSON.stringify(messageHistory));
   }, [messageHistory]);
+
+  const saveSettings = () => {
+    localStorage.setItem('metaAccessToken', accessToken);
+    setShowSettings(false);
+    setStatus({ type: 'success', message: 'Settings saved successfully!' });
+    setTimeout(() => setStatus(null), 3000);
+  };
 
   // Poll for status updates
   useEffect(() => {
@@ -91,7 +107,8 @@ export default function Home() {
         body: JSON.stringify({
           phoneNumber,
           isTestMode,
-          otp
+          otp,
+          accessToken // Send the token from state
         }),
       });
 
@@ -144,64 +161,91 @@ export default function Home() {
   return (
     <main>
       <div className="container">
-        <h1>WhatsApp Auth Demo</h1>
-
-        <div className="toggle-container">
-          <p className="toggle-label">Test Mode (Hello World)</p>
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={isTestMode}
-              onChange={(e) => setIsTestMode(e.target.checked)}
-            />
-            <span className="slider"></span>
-          </label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ margin: 0 }}>WhatsApp Auth</h1>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            style={{ width: 'auto', padding: '0.5rem', background: 'transparent', color: '#94a3b8', border: '1px solid #475569' }}
+          >
+            ⚙️
+          </button>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="phone">Phone Number (with country code)</label>
-          <input
-            id="phone"
-            type="tel"
-            placeholder="e.g. 971589935206"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-          />
-        </div>
-
-        <button onClick={handleSend} disabled={loading || !phoneNumber}>
-          {loading ? 'Sending...' : (isTestMode ? 'Send Test Message' : 'Send OTP')}
-        </button>
-
-        {status && (
-          <div className={`status-message ${status.type === 'success' ? 'status-success' : 'status-error'}`}>
-            {status.message}
-          </div>
-        )}
-
-        {!isTestMode && otpSent && (
-          <div className="otp-section">
+        {showSettings ? (
+          <div className="settings-panel" style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Settings</h3>
             <div className="form-group">
-              <label htmlFor="otp">Enter OTP</label>
+              <label htmlFor="token">Meta Access Token</label>
               <input
-                id="otp"
-                type="text"
-                placeholder="Enter 6-digit code"
-                maxLength={6}
-                value={enteredOtp}
-                onChange={(e) => setEnteredOtp(e.target.value)}
+                id="token"
+                type="password"
+                placeholder="EAAT..."
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
               />
             </div>
-            <button onClick={handleVerify} disabled={!enteredOtp}>
-              Verify OTP
+            <button onClick={saveSettings}>Save Settings</button>
+          </div>
+        ) : (
+          <>
+            <div className="toggle-container">
+              <p className="toggle-label">Test Mode (Hello World)</p>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={isTestMode}
+                  onChange={(e) => setIsTestMode(e.target.checked)}
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phone">Phone Number (with country code)</label>
+              <input
+                id="phone"
+                type="tel"
+                placeholder="e.g. 971589935206"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
+
+            <button onClick={handleSend} disabled={loading || !phoneNumber}>
+              {loading ? 'Sending...' : (isTestMode ? 'Send Test Message' : 'Send OTP')}
             </button>
 
-            {verificationStatus && (
-              <div className={`status-message ${verificationStatus.type === 'success' ? 'status-success' : 'status-error'}`}>
-                {verificationStatus.message}
+            {status && (
+              <div className={`status-message ${status.type === 'success' ? 'status-success' : 'status-error'}`}>
+                {status.message}
               </div>
             )}
-          </div>
+
+            {!isTestMode && otpSent && (
+              <div className="otp-section">
+                <div className="form-group">
+                  <label htmlFor="otp">Enter OTP</label>
+                  <input
+                    id="otp"
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    value={enteredOtp}
+                    onChange={(e) => setEnteredOtp(e.target.value)}
+                  />
+                </div>
+                <button onClick={handleVerify} disabled={!enteredOtp}>
+                  Verify OTP
+                </button>
+
+                {verificationStatus && (
+                  <div className={`status-message ${verificationStatus.type === 'success' ? 'status-success' : 'status-error'}`}>
+                    {verificationStatus.message}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Message History Section */}
